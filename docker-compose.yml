@@ -1,0 +1,95 @@
+version: "3.9"
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  backend:
+    image: maven:3.9-eclipse-temurin-17
+    container_name: backend
+    working_dir: /app/backend
+    command: >
+      sh -c "
+      apt-get update &&
+      apt-get install -y git &&
+      if [ ! -d .git ]; then
+        git clone https://github.com/ManjitSharma963/katariastoneworldbackend.git .;
+      fi &&
+      mvn clean package -DskipTests &&
+      java -jar target/*.jar
+      "
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/appdb
+      SPRING_DATASOURCE_USERNAME: appuser
+      SPRING_DATASOURCE_PASSWORD: apppass
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    networks:
+      - app-network
+
+  websiteui:
+    image: node:18-alpine
+    container_name: websiteui
+    working_dir: /app/websiteui
+    command: >
+      sh -c "
+      apk add --no-cache git &&
+      if [ ! -d .git ]; then
+        git clone https://github.com/ManjitSharma963/kataristoneworldinventory.git .;
+      fi &&
+      npm install --legacy-peer-deps &&
+      npm start
+      "
+    environment:
+      - PORT=3000
+      - REACT_APP_API_URL=http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  inventoryui:
+    image: node:18-alpine
+    container_name: inventoryui
+    working_dir: /app/inventoryui
+    command: >
+      sh -c "
+      apk add --no-cache git &&
+      if [ ! -d .git ]; then
+        git clone https://github.com/ManjitSharma963/katariastoneworld.git .;
+      fi &&
+      npm install --legacy-peer-deps &&
+      npm start
+      "
+    environment:
+      - PORT=3000
+      - REACT_APP_API_URL=http://backend:8080
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+volumes:
+  mysql_data:
+
+networks:
+  app-network:
