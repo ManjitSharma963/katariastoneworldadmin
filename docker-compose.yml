@@ -1,90 +1,73 @@
-version: "3.9"
-
 services:
 
   mysql:
     image: mysql:8.0
     container_name: mysql-db
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: appdb
-      MYSQL_USER: appuser
-      MYSQL_PASSWORD: apppass
-    ports:
-      - "3306:3306"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
-    image: maven:3.9-eclipse-temurin-17
+    build: ./backend
     container_name: backend
-    working_dir: /app/backend
-    command: >
-      sh -c "
-      apt-get update &&
-      apt-get install -y git &&
-      if [ ! -d .git ]; then
-        git clone https://github.com/ManjitSharma963/katariastoneworldbackend.git .;
-      fi &&
-      mvn clean package -DskipTests &&
-      java -jar target/*.jar
-      "
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/appdb
-      SPRING_DATASOURCE_USERNAME: appuser
-      SPRING_DATASOURCE_PASSWORD: apppass
+    env_file:
+      - .env
     ports:
       - "8080:8080"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  inventoryui:
+    build: 
+      context: ./inventoryui
+      args:
+        REACT_APP_API_URL: /api
+    container_name: inventoryui
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=/api
     networks:
       - app-network
 
   websiteui:
-    image: node:18-alpine
+    build: ./websiteui
     container_name: websiteui
-    working_dir: /app/websiteui
-    command: >
-      sh -c "
-      apk add --no-cache git &&
-      if [ ! -d .git ]; then
-        git clone https://github.com/ManjitSharma963/kataristoneworldinventory.git .;
-      fi &&
-      npm install --legacy-peer-deps &&
-      npm start
-      "
-    environment:
-      - PORT=3000
-      - REACT_APP_API_URL=http://backend:8080
     ports:
       - "3000:3000"
-    depends_on:
-      - backend
     networks:
       - app-network
-
-  inventoryui:
-    image: node:18-alpine
-    container_name: inventoryui
-    working_dir: /app/inventoryui
-    command: >
-      sh -c "
-      apk add --no-cache git &&
-      if [ ! -d .git ]; then
-        git clone https://github.com/ManjitSharma963/katariastoneworld.git .;
-      fi &&
-      npm install --legacy-peer-deps &&
-      npm start
-      "
-    environment:
-      - PORT=3000
-      - REACT_APP_API_URL=http://backend:8080
-    ports:
-      - "3001:3000"
     depends_on:
       - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - inventoryui
+      - websiteui
+      - backend
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     networks:
       - app-network
 
