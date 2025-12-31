@@ -6,10 +6,12 @@ RUN apk add --no-cache git
 RUN git clone https://github.com/ManjitSharma963/kataristoneworldinventory.git .
 ARG REACT_APP_API_URL=/api
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
-# Create .env file to ensure React picks up the environment variable
-RUN echo "REACT_APP_API_URL=$REACT_APP_API_URL" > .env
+# Create .env file and add homepage to package.json for /inventory routing
+RUN echo "REACT_APP_API_URL=$REACT_APP_API_URL" > .env && \
+    echo "PUBLIC_URL=/inventory" >> .env && \
+    node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.homepage='/inventory';fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
 # Verify the environment variable is set
-RUN echo "Building with REACT_APP_API_URL=$REACT_APP_API_URL" && cat .env
+RUN echo "Building with REACT_APP_API_URL=$REACT_APP_API_URL and homepage=/inventory" && cat .env && grep -A 1 '"homepage"' package.json || echo "homepage added to package.json"
 RUN npm install --legacy-peer-deps
 RUN npm run build
 # Fix undefined API URLs - replace only in fetch/API call contexts, not variable declarations
