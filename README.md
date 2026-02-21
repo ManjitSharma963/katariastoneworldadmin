@@ -10,7 +10,7 @@ Internet
    ▼
 ┌──────────────┐
 │   NGINX      │  (Reverse Proxy)
-│  :80         │
+│  :80 / :443  │
 └──────┬───────┘
        │
  ┌─────┼───────────────┐
@@ -27,7 +27,7 @@ Inventory  Website   Backend
 
 ## Services
 
-- **NGINX** (Port 80): Reverse proxy routing requests to appropriate services
+- **NGINX** (Ports 80, 443): Reverse proxy; HTTP and HTTPS (after SSL setup)
 - **Inventory UI** (Port 3001): React-based inventory management interface
 - **Website UI** (Port 3000): React-based public website
 - **Backend API** (Port 8080): Spring Boot REST API
@@ -78,12 +78,19 @@ docker compose ps
 
 ## Access URLs
 
-Once all services are running, access the application at:
+Once all services are running:
 
+**Local (HTTP):**
 - **Website UI**: http://localhost/
 - **Inventory UI**: http://localhost/inventory
 - **Backend API**: http://localhost/api/
-- **Backend Direct**: http://localhost:8080/api/
+
+**Production (HTTPS, after SSL setup):**
+- **Website**: https://www.katariastoneworld.com/
+- **Inventory**: https://www.katariastoneworld.com/inventory  
+- **API**: https://www.katariastoneworld.com/api/
+
+See **[SSL-SETUP.md](SSL-SETUP.md)** for enabling HTTPS and certificates. The SSL steps do not update, restart, or delete the database.
 
 ## Project Structure
 
@@ -162,7 +169,7 @@ docker compose down
 docker compose down -v
 ```
 
-**Warning**: This will delete all database data!
+**Warning**: The `-v` flag removes volumes and **will delete all database data**. Do not use this if you want to keep your data. Use `docker compose down` (without `-v`) to stop services without deleting the database.
 
 ## Troubleshooting
 

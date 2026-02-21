@@ -68,17 +68,33 @@ services:
     container_name: nginx
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - inventoryui
       - websiteui
       - backend
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      # SSL: shared with certbot (run certbot once to obtain certs)
+      - certbot_conf:/etc/letsencrypt:ro
+      # ACME challenge (certbot writes here, nginx serves .well-known)
+      - ./certbot/www:/var/www/certbot:ro
     networks:
       - app-network
 
+  # Obtain certs (run once): docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d www.katariastoneworld.com --email your@email.com --agree-tos --no-eff-email
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    profiles:
+      - certbot
+
 volumes:
   mysql_data:
+  certbot_conf:
 
 networks:
   app-network:
