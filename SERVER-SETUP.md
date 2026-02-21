@@ -123,3 +123,44 @@ You can add a cron job to run `certbot renew` every month.
 | Restart only nginx | `docker compose restart nginx` |
 
 **Important:** Do **not** run `docker compose down -v` — the `-v` flag deletes volumes and would remove your database.
+
+---
+
+## Troubleshooting: Nothing shows on https://www.katariastoneworld.com/
+
+Run these on the server and fix what fails.
+
+**1. All containers running**
+```bash
+docker ps
+```
+Ensure `nginx`, `websiteui`, `inventoryui`, `backend` are **Up**. If `websiteui` is exited, run:
+```bash
+docker compose up -d websiteui
+```
+
+**2. Nginx can reach websiteui**
+```bash
+docker compose exec nginx wget -q -O - http://websiteui:3000/ | head -20
+```
+You should see HTML (e.g. `<!DOCTYPE html>`). If it hangs or "bad gateway", the app container or network is the problem.
+
+**3. Nginx error log**
+```bash
+docker compose logs nginx --tail 50
+```
+Look for `upstream timed out`, `502`, or `connection refused`. Fix the upstream (websiteui) if needed.
+
+**4. Test HTTPS from the server**
+```bash
+curl -k -I https://localhost/
+```
+You should get `HTTP/2 200` (or 301/302). If you get 502, nginx can’t reach websiteui.
+
+**5. Browser: check what’s actually loaded**
+- Open https://www.katariastoneworld.com/
+- Press **F12** → **Network** tab → refresh. See if the first request (the page) is **200** or **502**.
+- Open **Console** tab. Look for red errors (e.g. mixed content, blocked scripts).
+
+**6. Mixed content (blank page but no 502)**  
+If the page request is 200 but the screen is blank, the HTML may load but JS/CSS are blocked (e.g. requested over `http://` on an HTTPS page). Ensure the website app is built to use relative URLs or `https` for assets and API.
