@@ -157,11 +157,49 @@ docker compose logs -f inventoryui
 docker compose logs -f nginx
 ```
 
+### Re-run Docker Compose (without restarting or deleting MySQL)
+
+Use these steps when you want to re-run or refresh the stack **without restarting MySQL** and **without deleting the database**.
+
+1. **Do not use `docker compose down -v`**  
+   The `-v` flag removes volumes and deletes all database data. Omit it.
+
+2. **Option A – Stack is already running (only refresh other services)**  
+   Bring everything up and recreate only containers that need it; leave MySQL as-is if it’s already running:
+   ```bash
+   docker compose up -d --no-recreate
+   ```
+   This starts any stopped services and does not recreate existing containers (including MySQL).
+
+3. **Option B – Stack is stopped (bring it back without deleting data)**  
+   Stop without removing volumes, then start again:
+   ```bash
+   docker compose down
+   docker compose up -d
+   ```
+   MySQL will start again, but **data is kept** in the `mysql_data` volume. Only `down -v` would delete it.
+
+4. **Option C – Rebuild app images but not MySQL**  
+   Rebuild only the services you changed, then bring the stack up without recreating MySQL:
+   ```bash
+   docker compose build backend
+   docker compose up -d --no-recreate
+   ```
+   Or rebuild and recreate only specific services (MySQL is not in the list):
+   ```bash
+   docker compose up -d --build backend inventoryui websiteui nginx
+   ```
+   MySQL is not rebuilt and will only be started if it was stopped.
+
+**Summary:** Never use `-v` with `down`. Use `--no-recreate` when you want to avoid restarting/recreating MySQL.
+
 ### Stop Services
 
 ```bash
 docker compose down
 ```
+
+Use this when you want to stop the stack but **keep the database**. Data in the `mysql_data` volume remains for the next `docker compose up -d`.
 
 ### Stop and Remove Volumes
 
