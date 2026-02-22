@@ -100,6 +100,58 @@ docker compose restart nginx
 
 ---
 
+## HTTP works but HTTPS does not
+
+Do these on the server in order.
+
+**Step 1 – Certificates must exist**
+
+```bash
+sudo ls -la /etc/letsencrypt/live/www.katariastoneworld.com/
+```
+
+You must see `fullchain.pem` and `privkey.pem`. If not, get certs first (see Step 4 in this file: stop nginx, run certbot, start nginx).
+
+**Step 2 – Switch nginx to HTTPS config**
+
+```bash
+cd ~/katariastoneworldadmin
+cp nginx-ssl.conf nginx.conf
+```
+
+**Step 3 – Restart nginx**
+
+```bash
+docker compose restart nginx
+```
+
+Check nginx is running and not crashing:
+
+```bash
+docker ps
+docker compose logs nginx --tail 20
+```
+
+If you see "cannot load certificate" or nginx keeps restarting, certs are missing or wrong path — go back to Step 1.
+
+**Step 4 – Open port 443 in firewall**
+
+```bash
+sudo ufw allow 443/tcp
+sudo ufw status
+sudo ufw reload
+```
+
+**Step 5 – Test HTTPS from the server**
+
+```bash
+curl -k -I https://localhost/
+```
+
+You should get `HTTP/2 200` (or 301/302). Then try in the browser: **https://www.katariastoneworld.com/**
+
+---
+
 ## 8. (Optional) Renew certs later
 
 Let's Encrypt certs last 90 days. To renew:
@@ -123,6 +175,57 @@ You can add a cron job to run `certbot renew` every month.
 | Restart only nginx | `docker compose restart nginx` |
 
 **Important:** Do **not** run `docker compose down -v` — the `-v` flag deletes volumes and would remove your database.
+
+---
+
+## Troubleshooting: ERR_CONNECTION_REFUSED (site can’t be reached)
+
+If the browser says “refused to connect” or “This site can’t be reached”:
+
+**1. Ensure nginx and app containers are running**
+```bash
+cd ~/katariastoneworldadmin
+docker ps
+```
+You must see `nginx`, `websiteui`, `inventoryui`, `backend` with status **Up**. If any are missing:
+```bash
+docker compose up -d
+```
+
+**2. If nginx keeps exiting (e.g. no SSL certs yet)**  
+Use HTTP-only config so nginx can start, then open the site on **http** first:
+```bash
+cp nginx-http-only.conf nginx.conf
+docker compose up -d nginx
+docker ps   # nginx should be Up
+```
+Then open **http://www.katariastoneworld.com** (not https). After you have certs, switch to the HTTPS config.
+
+**3. Open firewall ports 80 and 443**
+```bash
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw status
+sudo ufw enable   # if not already enabled
+```
+
+**4. Confirm something is listening on 80 and 443**
+```bash
+sudo ss -tlnp | grep -E ':80|:443'
+# or
+sudo netstat -tlnp | grep -E ':80|:443'
+```
+You should see Docker or nginx listening on 0.0.0.0:80 and 0.0.0.0:443.
+
+**5. Test from the server**
+```bash
+curl -I http://localhost/
+curl -k -I https://localhost/
+```
+If these work but the browser still gets “refused”, the firewall or cloud security group is blocking external access to 80/443.
+
+**6. Cloud server (AWS, DigitalOcean, etc.)**  
+In the provider’s dashboard, open **inbound** ports **80** and **443** (TCP) for the server’s IP or security group.
 
 ---
 
