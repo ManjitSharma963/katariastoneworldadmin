@@ -42,11 +42,12 @@ echo ""
 # -----------------------------
 # LOAD MYSQL PASSWORD FROM .env
 # -----------------------------
+# Strip BOM (UTF-8 byte order mark) if present, then source — avoids "command not found" on line 1
 MYSQL_ROOT_PASSWORD=""
 if [ -f "${PROJECT_DIR}/.env" ]; then
     echo "Loading MySQL credentials from .env..."
     set +u
-    source "${PROJECT_DIR}/.env"
+    source <(sed '1s/^\xEF\xBB\xBF//' "${PROJECT_DIR}/.env")
     set -u
 fi
 
