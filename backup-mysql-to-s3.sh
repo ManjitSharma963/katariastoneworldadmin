@@ -24,7 +24,7 @@ BACKUP_FILE="${BACKUP_DIR}/${BACKUP_NAME}"
 
 # S3 bucket and prefix (no trailing slash on bucket)
 # Override via env: export S3_BUCKET="s3://your-bucket/mysql/backups"
-S3_BUCKET="${S3_BUCKET:-s3://katariastoneworldinventory-db-backups-prod-ap-south-1/mysql/katariadb}"
+S3_BUCKET="${S3_BUCKET:-s3://katariastoneworldinventory-db-backups-prod-ap-south-1/mysql/mydatabase}"
 
 MYSQL_SERVICE_NAME="mysql"
 
